@@ -1536,7 +1536,10 @@ function estimateCal(a) {
 
 function renderFeed() {
   const feed = document.getElementById('activityFeed');
-  const items = [...state.ledger].reverse().filter(e => e.type === 'earn').slice(0, 20);
+  const items = [...state.ledger]
+    .filter(e => e.type === 'earn')
+    .sort((a, b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 20);
   if (!items.length) { feed.innerHTML = '<div class="empty-state">No activity yet. Sync Strava or log manually.</div>'; return; }
 
   feed.innerHTML = '';
