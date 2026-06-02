@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beer Bank 🍺</title>
+<script>
+  // Set personalized title as early as possible if we have athlete data
+  (function() {
+    try {
+      const s = JSON.parse(localStorage.getItem('beerbank_v3') || '{}');
+      if (s.athlete && s.athlete.firstname) {
+        document.title = s.athlete.firstname + "'s Beer Bank 🍺";
+      }
+    } catch(e) {}
+  })();
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,700;0,800;0,900;1,700;1,800&family=Barlow:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    /* Athletic Brewing exact palette — pulled from can artwork */
+    --gold: #F5C025;          /* can label yellow */
+    --gold-dim: #C99810;
+    --gold-bright: #FFD84D;
+    --teal: #4BBFBF;          /* Run Wild IPA sky blue */
+    --teal-dim: #2E9898;
+    --sky: #6DD4D4;           /* lighter sky highlight */
+    --navy: #1B2A4A;          /* can body dark navy */
+    --navy-mid: #1E3155;
+    --navy-card: #243663;     /* slightly lighter for cards */
+    --navy-border: #2E4480;   /* subtle border */
+    --white: #FFFFFF;
+    --off-white: #E9EFF8;
+    --muted: #9BAFD4;
+    --red: #E84040;
+    --green: #2DC653;
+    --strava: #FC4C02;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Barlow', sans-serif;
+    min-height: 100vh;
+    background-image:
+      radial-gradient(ellipse 100% 60% at 50% -10%, rgba(75,191,191,0.05) 0%, transparent 70%);
+  }
+
+  /* ---- HEADER ---- */
+  .header {
+    background: var(--navy-mid);
+    border-bottom: 1px solid var(--navy-border);
+    padding: 0 32px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 32px rgba(0,0,0,0.5);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    font-size: 28px;
+    line-height: 1;
+  }
+
+  .logo-text {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 24px;
+    font-weight: 900;
+    font-style: italic;
+    color: var(--white);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  .logo-text span { color: var(--gold); }
+
+  .logo-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .strava-btn {
+    background: var(--strava);
+    color: white;
+    border: none;
+    padding: 9px 18px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .strava-btn:hover { background: #e04400; transform: translateY(-1px); }
+
+  .athlete-name {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--gold);
+    letter-spacing: 1px;
+  }
+
+  /* ---- MAIN ---- */
+  .main { max-width: 1100px; margin: 0 auto; padding: 32px 24px; }
+
+  /* ---- HERO BALANCE ---- */
+  .balance-hero {
+    background: var(--navy-mid);
+    border: 1px solid var(--navy-border);
+    border-radius: 8px;
+    padding: 48px 40px 40px;
+    text-align: center;
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .balance-hero::after {
+    content: '🍺';
+    position: absolute;
+    right: -10px;
+    bottom: -20px;
+    font-size: 140px;
+    opacity: 0.04;
+    transform: rotate(-15deg);
+    pointer-events: none;
+    line-height: 1;
+  }
+
+  .balance-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .balance-number {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 112px;
+    font-weight: 900;
+    font-style: italic;
+    color: var(--gold);
+    line-height: 0.9;
+    letter-spacing: -2px;
+    transition: all 0.3s;
+  }
+
+  .balance-unit {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    font-style: italic;
+    text-transform: uppercase;
+    color: var(--off-white);
+    letter-spacing: 3px;
+    margin-top: 8px;
+    opacity: 0.7;
+  }
+
+  .balance-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-top: 32px;
+    flex-wrap: wrap;
+  }
+
+  .btn-drink {
+    background: transparent;
+    border: 1.5px solid var(--navy-border);
+    color: var(--white);
+    padding: 11px 24px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-drink:hover { border-color: var(--gold); color: var(--gold); background: rgba(240,180,41,0.06); }
+
+  .btn-earn {
+    background: var(--gold);
+    border: 1.5px solid var(--gold);
+    color: var(--navy);
+    padding: 11px 24px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-earn:hover { background: var(--gold-bright); border-color: var(--gold-bright); transform: translateY(-1px); }
+
+  /* ---- GRID ---- */
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .balance-number { font-size: 80px; }
+    .header { padding: 0 16px; }
+    .main { padding: 20px 16px; }
+  }
+
+  /* ---- CARDS ---- */
+  .card {
+    background: var(--navy-card);
+    border: 1px solid var(--navy-border);
+    border-radius: 8px;
+    padding: 22px;
+    transition: border-color 0.15s;
+  }
+  .card:hover { border-color: var(--teal-dim); }
+
+  .card-title {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  /* ---- WEEK VIEW ---- */
+  .week-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+  }
+
+  .day-col { text-align: center; }
+
+  .day-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--off-white);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 8px;
+    opacity: 0.6;
+  }
+
+  .day-bar-wrap {
+    height: 80px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    margin-bottom: 6px;
+  }
+
+  .day-bar {
+    width: 26px;
+    background: linear-gradient(to top, var(--gold-dim), var(--gold));
+    border-radius: 3px 3px 0 0;
+    transition: height 0.5s cubic-bezier(0.34,1.56,0.64,1);
+    min-height: 2px;
+  }
+
+  .day-bar.today {
+    background: linear-gradient(to top, var(--teal-dim), var(--teal));
+    box-shadow: 0 0 16px rgba(58,191,191,0.4);
+  }
+  .day-bar.negative { background: linear-gradient(to top, #8B1A1A, var(--red)); }
+
+  .day-val {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--off-white);
+  }
+
+  /* ---- BEER PICKER ---- */
+  .beer-select-wrap {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 0;
+  }
+
+  .beer-option {
+    border: 1.5px solid var(--navy-border);
+    border-radius: 6px;
+    padding: 10px 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-align: center;
+    background: var(--navy-mid);
+  }
+  .beer-option:hover { border-color: var(--gold); background: rgba(240,180,41,0.06); }
+  .beer-option.selected { border-color: var(--gold); background: rgba(240,180,41,0.12); }
+
+  .beer-option-name {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--white);
+  }
+
+  .beer-option-cal {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+
+  .beer-option-icon { margin-bottom: 6px; display:flex; justify-content:center; align-items:flex-end; height:40px; }
+
+  /* ---- LOG MODAL ---- */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(6px);
+  }
+  .overlay.open { display: flex; }
+
+  .modal {
+    background: var(--navy-card);
+    border: 1px solid var(--navy-border);
+    border-radius: 8px;
+    padding: 32px;
+    width: 480px;
+    max-width: 95vw;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+    animation: modalIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  }
+
+  @keyframes modalIn {
+    from { transform: scale(0.93) translateY(16px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+
+  .modal-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 26px;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    color: var(--white);
+    margin-bottom: 4px;
+    letter-spacing: 1px;
+  }
+
+  .modal-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .form-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--teal);
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .form-group { margin-bottom: 20px; }
+
+  .qty-wrap {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-top: 4px;
+  }
+
+  .qty-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 4px;
+    border: 1.5px solid var(--navy-border);
+    background: var(--navy-mid);
+    color: var(--white);
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+  }
+  .qty-btn:hover { border-color: var(--gold); color: var(--gold); }
+
+  .qty-display {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 48px;
+    font-weight: 900;
+    font-style: italic;
+    color: var(--gold);
+    min-width: 70px;
+    text-align: center;
+    line-height: 1;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .btn-cancel {
+    flex: 1;
+    background: transparent;
+    border: 1px solid var(--navy-border);
+    color: var(--muted);
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-cancel:hover { border-color: var(--muted); color: var(--white); }
+
+  .btn-confirm {
+    flex: 2;
+    background: var(--gold);
+    border: none;
+    color: var(--navy);
+    padding: 12px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 16px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-confirm:hover { background: var(--gold-bright); }
+
+  /* ---- ACTIVITY FEED ---- */
+  .activity-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 13px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    animation: fadeIn 0.35s ease;
+  }
+  .activity-item:last-child { border-bottom: none; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .activity-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    background: rgba(240,180,41,0.08);
+    border: 1px solid var(--navy-border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 17px;
+    flex-shrink: 0;
+  }
+
+  .activity-info { flex: 1; min-width: 0; }
+
+  .activity-name {
+    font-family: 'Barlow', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--white);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .activity-meta {
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--off-white);
+    margin-top: 3px;
+    opacity: 0.5;
+  }
+
+  .activity-beers {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    font-style: italic;
+    color: var(--gold);
+    text-align: right;
+  }
+  .activity-beers.negative { color: var(--red); }
+
+  .activity-beers-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--muted);
+    text-align: right;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* ---- STATS ---- */
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .stat-row:last-child { border-bottom: none; }
+
+  .stat-key {
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    color: var(--off-white);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    opacity: 0.6;
+  }
+
+  .stat-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  /* ---- SETUP ---- */
+  .setup-screen {
+    display: none;
+    text-align: center;
+    padding: 60px 20px;
+  }
+  .setup-screen.active { display: block; }
+
+  .setup-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 64px;
+    font-weight: 900;
+    font-style: italic;
+    text-transform: uppercase;
+    color: var(--white);
+    letter-spacing: -1px;
+    margin-bottom: 8px;
+    line-height: 1;
+  }
+
+  .setup-title span { color: var(--gold); }
+
+  .setup-sub {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    margin-bottom: 48px;
+  }
+
+  .setup-card {
+    background: var(--navy-card);
+    border: 1px solid var(--navy-border);
+    border-radius: 8px;
+    padding: 36px;
+    max-width: 560px;
+    margin: 0 auto 32px;
+    text-align: left;
+  }
+
+  .setup-steps {
+    counter-reset: steps;
+    list-style: none;
+  }
+
+  .setup-step {
+    counter-increment: steps;
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .setup-step::before {
+    content: counter(steps);
+    width: 26px;
+    height: 26px;
+    background: var(--gold);
+    color: var(--navy);
+    border-radius: 3px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .setup-step-content { flex: 1; }
+  .setup-step-title {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--white);
+    margin-bottom: 4px;
+  }
+  .setup-step-desc { font-size: 13px; color: var(--muted); line-height: 1.6; }
+
+  .input-field {
+    width: 100%;
+    background: var(--navy-mid);
+    border: 1.5px solid var(--navy-border);
+    border-radius: 6px;
+    padding: 11px 14px;
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    margin-top: 8px;
+    transition: border-color 0.15s;
+  }
+  .input-field:focus { outline: none; border-color: var(--gold); }
+  .input-field::placeholder { color: var(--muted); }
+
+  .btn-big {
+    background: var(--gold);
+    color: var(--navy);
+    border: none;
+    padding: 16px 40px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .btn-big:hover { background: var(--gold-bright); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(240,180,41,0.25); }
+
+  .btn-preview {
+    background: transparent;
+    color: var(--muted);
+    border: 1px dashed var(--navy-border);
+    padding: 12px 40px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.15s;
+    text-transform: uppercase;
+  }
+  .btn-preview:hover { border-color: var(--teal); color: var(--teal); }
+
+  /* ---- CUSTOM BEER EDITOR ---- */
+  .custom-beer-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 8px;
+    align-items: center;
+  }
+  .custom-beer-row .input-field { margin-top: 0; flex: 1; }
+
+  .btn-remove {
+    background: transparent;
+    border: 1px solid rgba(230,57,70,0.3);
+    color: var(--red);
+    width: 32px;
+    height: 32px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: all 0.15s;
+  }
+  .btn-remove:hover { background: rgba(230,57,70,0.12); }
+
+  .btn-add-beer {
+    background: transparent;
+    border: 1px dashed var(--navy-border);
+    color: var(--muted);
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    font-family: 'DM Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.15s;
+    margin-top: 4px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .btn-add-beer:hover { border-color: var(--gold); color: var(--gold); }
+
+  .drink-type-badge {
+    display: inline-block;
+    background: rgba(240,180,41,0.1);
+    border: 1px solid rgba(240,180,41,0.2);
+    border-radius: 3px;
+    padding: 3px 10px;
+    font-family: 'DM Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 6px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  /* loading */
+  .loading-dots::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+  }
+  @keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--muted);
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--gold);
+    color: var(--navy);
+    padding: 11px 28px;
+    border-radius: 4px;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 900;
+    font-size: 15px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    z-index: 999;
+    transition: transform 0.4s cubic-bezier(0.34,1.56,0.64,1);
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(240,180,41,0.3);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  .week-summary {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--navy-border);
+  }
+  .week-stat { text-align: center; }
+  .week-stat-val {
+    font-family: 'Barlow Condensed', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    font-style: italic;
+    color: var(--gold);
+  }
+  .week-stat-key {
+    font-family: 'DM Mono', monospace;
+    font-size: 9px;
+    color: var(--off-white);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-top: 2px;
+    opacity: 0.55;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="logo">
+    <span class="logo-icon">🍺</span>
+    <div>
+      <div class="logo-text" id="logoText"><span style="color:var(--teal)">Beer</span> <span style="color:var(--gold)">Bank</span></div>
+      <div class="logo-sub">Dues for your Brews</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div id="athleteName" class="athlete-name" style="display:none"></div>
+    <button class="strava-btn" id="stravaBtn" onclick="connectStrava()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      Connect Strava
+    </button>
+  </div>
+</div>
+
+<!-- SETUP SCREEN -->
+<div class="setup-screen active" id="setupScreen">
+  <div class="main">
+    <div class="setup-title"><span style="color:var(--teal)">Beer</span> <span style="color:var(--gold)">Bank</span></div>
+    <div class="setup-sub">Dues for your Brews</div>
+
+    <div class="setup-card">
+      <div class="card-title">⚙ Setup</div>
+      <ol class="setup-steps">
+        <li class="setup-step">
+          <div class="setup-step-content">
+            <div class="setup-step-title">Create a free Strava API app</div>
+            <div class="setup-step-desc">Go to <a href="https://www.strava.com/settings/api" target="_blank" style="color:var(--teal)">strava.com/settings/api</a>. Set "Authorization Callback Domain" to <code style="color:var(--gold)">localhost</code> (or your GitHub Pages domain). Copy your Client ID and Client Secret.</div>
+          </div>
+        </li>
+        <li class="setup-step">
+          <div class="setup-step-content">
+            <div class="setup-step-title">Enter your Client ID below</div>
+            <div class="setup-step-desc">Your secret never leaves this page — everything runs locally in your browser.</div>
+            <input class="input-field" id="clientIdInput" type="text" placeholder="e.g. 12345" />
+          </div>
+        </li>
+        <li class="setup-step">
+          <div class="setup-step-content">
+            <div class="setup-step-title">Pick your default beer style</div>
+            <div class="setup-step-desc">You can always change this later or add a custom style.</div>
+            <div id="setupBeerPicker" class="beer-select-wrap" style="margin-top:12px"></div>
+          </div>
+        </li>
+      </ol>
+      <button class="btn-big" onclick="startSetup()" style="width:100%">Connect Strava →</button>
+      <button class="btn-preview" onclick="loadPreviewMode()" style="width:100%;margin-top:12px">👀 Preview Dashboard</button>
+    </div>
+
+    <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;letter-spacing:1px;text-transform:uppercase">
+      Your data is stored only in your browser's localStorage.<br>No server. No tracking. Just 🍺.
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard" style="display:none">
+  <div id="previewBanner" style="display:none;background:var(--teal);color:var(--navy);text-align:center;padding:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase">
+    👀 PREVIEW MODE &nbsp;·&nbsp; <span style="opacity:0.7;font-weight:400">Mock data only</span> &nbsp;·&nbsp; <button onclick="clearPreview()" style="background:none;border:1px solid var(--navy);color:var(--navy);padding:2px 10px;border-radius:3px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:1px">EXIT</button>
+  </div>
+  <div class="main">
+
+    <!-- BALANCE HERO -->
+    <div class="balance-hero">
+      <div class="balance-label">🍺 Current Beer Balance</div>
+      <div class="balance-number" id="balanceDisplay">0.0</div>
+      <div class="balance-unit">beers in the bank</div>
+      <div style="margin-top:12px" id="currentBeerBadge"></div>
+      <div class="balance-actions">
+        <button class="btn-drink" onclick="openModal('drink')">🍺 Log Beers Drank</button>
+        <button class="btn-earn" onclick="openModal('earn')">💪 Log Manual Activity</button>
+        <button class="btn-drink" onclick="refreshActivities()" id="refreshBtn">↻ Sync Strava</button>
+      </div>
+    </div>
+
+    <!-- WEEK + STATS -->
+    <div class="grid-2">
+
+      <!-- WEEK VIEW -->
+      <div class="card">
+        <div class="card-title">📅 This Week <span id="weekRange" style="font-size:10px;margin-left:auto;opacity:0.6"></span></div>
+        <div class="week-grid" id="weekGrid"></div>
+        <div class="week-summary">
+          <div class="week-stat">
+            <div class="week-stat-val" id="weekEarned">0.0</div>
+            <div class="week-stat-key">Earned</div>
+          </div>
+          <div class="week-stat">
+            <div class="week-stat-val" id="weekDrank" style="color:var(--red)">0.0</div>
+            <div class="week-stat-key">Drank</div>
+          </div>
+          <div class="week-stat">
+            <div class="week-stat-val" id="weekNet">0.0</div>
+            <div class="week-stat-key">Net</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- BEER STYLE -->
+      <div class="card">
+        <div class="card-title">🍻 Beer Style</div>
+        <div id="beerPickerDash" class="beer-select-wrap"></div>
+        <div style="margin-top:16px">
+          <div class="card-title" style="margin-bottom:8px">+ Custom Style</div>
+          <div id="customBeerList"></div>
+          <button class="btn-add-beer" onclick="addCustomBeer()">+ Add custom beer style</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACTIVITY FEED + STATS -->
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-title">🏃 Recent Activity</div>
+        <div id="activityFeed">
+          <div class="empty-state">Connect Strava to see your activities</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📊 All-Time Stats</div>
+        <div id="statsPanel">
+          <div class="stat-row"><span class="stat-key">Total Earned</span><span class="stat-val" id="statEarned">0.0 🍺</span></div>
+          <div class="stat-row"><span class="stat-key">Total Drank</span><span class="stat-val" id="statDrank">0.0</span></div>
+          <div class="stat-row"><span class="stat-key">Best Week</span><span class="stat-val" id="statBestWeek">—</span></div>
+          <div class="stat-row"><span class="stat-key">Activities Logged</span><span class="stat-val" id="statActivities">0</span></div>
+          <div class="stat-row"><span class="stat-key">Calories Burned</span><span class="stat-val" id="statCalories">0</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- LOG MODAL -->
+<div class="overlay" id="logOverlay">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Log Beers Drank</div>
+    <div class="modal-sub" id="modalSub">PICK YOUR BEER & QUANTITY</div>
+
+    <div class="form-group">
+      <label class="form-label">Beer Style</label>
+      <div id="modalBeerPicker" class="beer-select-wrap"></div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Quantity</label>
+      <div class="qty-wrap">
+        <button class="qty-btn" onclick="adjustQty(-1)">−</button>
+        <div class="qty-display" id="qtyDisplay">1</div>
+        <button class="qty-btn" onclick="adjustQty(1)">+</button>
+      </div>
+    </div>
+
+    <div style="font-family:'Courier Prime',monospace;font-size:13px;color:var(--text-dim);padding:12px;background:rgba(0,0,0,0.2);border-radius:8px;text-align:center">
+      <span id="calSummary">≈ 150 cal per beer</span>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-confirm" id="confirmBtn" onclick="confirmLog()">Log It</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// =============================
+//  STATE
+// =============================
+const DEFAULT_BEERS = [
+  { id: 'light', name: 'Light Beer', cal: 103, glass: 'pint' },
+  { id: 'lager', name: 'Lager', cal: 153, glass: 'stein' },
+  { id: 'ipa', name: 'IPA', cal: 195, glass: 'weizen' },
+  { id: 'stout', name: 'Stout', cal: 210, glass: 'tulip' },
+];
+
+let state = {
+  clientId: '',
+  accessToken: '',
+  athlete: null,
+  selectedBeer: 'light',
+  customBeers: [],
+  ledger: [], // {date, type:'earn'|'drink', beers, cal, note, activityId?}
+  activities: [],
+  processedIds: [],
+};
+
+// =============================
+//  PERSISTENCE
+// =============================
+function save() { localStorage.setItem('beerbank_v3', JSON.stringify(state)); }
+function load() {
+  const raw = localStorage.getItem('beerbank_v3');
+  if (raw) state = { ...state, ...JSON.parse(raw) };
+}
+
+// =============================
+//  INIT
+// =============================
+load();
+
+// Run after all functions are defined
+document.addEventListener('DOMContentLoaded', function() {
+  // Check for OAuth callback
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('code')) {
+    const code = params.get('code');
+    window.history.replaceState({}, '', window.location.pathname);
+    exchangeToken(code);
+  } else if (state.accessToken) {
+    showDashboard();
+  } else {
+    showSetup();
+  }
+});
+
+// =============================
+//  BEER GLASS SVG ICONS
+// =============================
+function getBeerGlassIcon(glass) {
+  const col  = 'var(--teal)';
+  const beer = 'var(--gold)';
+  const foam = 'var(--white)';
+  const sw   = '1.8';
+
+  const icons = {
+
+    // Pint Glass — wider at top, narrows to flat base
+    // Top rim: x 6–24 (width 18). Bottom: x 9–21 (width 12). Flat base line.
+    pint: `<svg width="30" height="42" viewBox="0 0 30 42" fill="none">
+      <path d="M6 8 L9 36 L21 36 L24 8 Z" fill="${beer}" fill-opacity="0.2"/>
+      <path d="M6 8 L9 36 L21 36 L24 8" stroke="${col}" stroke-width="${sw}" stroke-linejoin="round" fill="none"/>
+      <line x1="9" y1="36" x2="21" y2="36" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>
+      <ellipse cx="15" cy="8" rx="9" ry="2.5" fill="${foam}" fill-opacity="0.9"/>
+      <ellipse cx="15" cy="8" rx="9" ry="2.5" stroke="${col}" stroke-width="1.4" fill="none"/>
+      <line x1="9" y1="19" x2="21" y2="20.5" stroke="${col}" stroke-width="1" stroke-linecap="round" opacity="0.3"/>
+    </svg>`,
+
+    // Pilsner Glass — straight taper, narrow base widens to broad rim
+    weizen: `<svg width="30" height="42" viewBox="0 0 30 42" fill="none">
+      <path d="M9 36 L6 10 L24 10 L21 36 Z" fill="${beer}" fill-opacity="0.2"/>
+      <path d="M9 36 L6 10" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" fill="none"/>
+      <path d="M21 36 L24 10" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" fill="none"/>
+      <line x1="9" y1="36" x2="21" y2="36" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>
+      <ellipse cx="15" cy="10" rx="9" ry="2.2" fill="${foam}" fill-opacity="0.9"/>
+      <ellipse cx="15" cy="10" rx="9" ry="2.2" stroke="${col}" stroke-width="1.4" fill="none"/>
+      <line x1="8.5" y1="22" x2="21.5" y2="20.5" stroke="${col}" stroke-width="1" stroke-linecap="round" opacity="0.3"/>
+    </svg>`,
+
+    // Stein — straight-sided mug with handle and lid hint
+    stein: `<svg width="34" height="42" viewBox="0 0 34 42" fill="none">
+      <rect x="5" y="10" width="20" height="26" rx="2" fill="${beer}" fill-opacity="0.2"/>
+      <rect x="5" y="10" width="20" height="26" rx="2" stroke="${col}" stroke-width="${sw}" fill="none"/>
+      <path d="M25 16 Q31 16 31 21 Q31 26 25 26" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" fill="none"/>
+      <ellipse cx="15" cy="10" rx="10" ry="2.5" fill="${foam}" fill-opacity="0.9"/>
+      <ellipse cx="15" cy="10" rx="10" ry="2.5" stroke="${col}" stroke-width="1.4" fill="none"/>
+      <line x1="5" y1="17" x2="25" y2="17" stroke="${col}" stroke-width="1" opacity="0.3"/>
+      <circle cx="10" cy="24" r="1.5" stroke="${col}" stroke-width="1.2" fill="none" opacity="0.4"/>
+      <circle cx="15" cy="24" r="1.5" stroke="${col}" stroke-width="1.2" fill="none" opacity="0.4"/>
+      <circle cx="10" cy="29" r="1.5" stroke="${col}" stroke-width="1.2" fill="none" opacity="0.4"/>
+      <circle cx="15" cy="29" r="1.5" stroke="${col}" stroke-width="1.2" fill="none" opacity="0.4"/>
+    </svg>`,
+
+    // Tulip Glass — bulbous bowl, curves inward then flares at rim, short stem, flat foot
+    tulip: `<svg width="30" height="42" viewBox="0 0 30 42" fill="none">
+      <path d="M8 22 Q6 15 9 10 Q15 6 21 10 Q24 15 22 22 Q20 28 17 30 L17 36" fill="${beer}" fill-opacity="0.15"/>
+      <path d="M8 22 Q6 15 9 10 Q15 6 21 10 Q24 15 22 22 Q20 28 17 30 L17 36" stroke="${col}" stroke-width="${sw}" fill="none" stroke-linejoin="round"/>
+      <path d="M13 30 L13 36" stroke="${col}" stroke-width="${sw}" stroke-linecap="round"/>
+      <line x1="10" y1="36" x2="20" y2="36" stroke="${col}" stroke-width="2.2" stroke-linecap="round"/>
+      <path d="M8 22 Q9 25 12 27 Q15 28.5 18 27 Q21 25 22 22" stroke="${col}" stroke-width="1.2" fill="none" opacity="0.35"/>
+      <ellipse cx="15" cy="10" rx="6" ry="2" fill="${foam}" fill-opacity="0.9"/>
+      <ellipse cx="15" cy="10" rx="6" ry="2" stroke="${col}" stroke-width="1.4" fill="none"/>
+    </svg>`,
+
+  };
+
+  return icons[glass] || `<svg width="28" height="40" viewBox="0 0 28 40"><text x="14" y="28" text-anchor="middle" font-size="22">🍺</text></svg>`;
+}
+
+function renderBeerPicker(containerId, selected, onChange) {
+  const c = document.getElementById(containerId);
+  if (!c) return;
+  c.innerHTML = '';
+
+  // Standard + custom beers
+  getAllBeers().forEach(b => {
+    const d = document.createElement('div');
+    d.className = 'beer-option' + (b.id === selected ? ' selected' : '');
+    d.innerHTML = `<div class="beer-option-icon">${getBeerGlassIcon(b.glass)}</div><div class="beer-option-name">${b.name}</div><div class="beer-option-cal">${b.cal} cal</div>`;
+    d.onclick = () => { onChange(b.id); renderBeerPickerTracked(containerId, b.id, onChange); };
+    c.appendChild(d);
+  });
+
+  // "Other" tile — always last
+  const otherId = 'other_' + containerId;
+  const isOther = selected === otherId;
+  const otherBeer = state.otherBeers && state.otherBeers[containerId];
+
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'grid-column: 1 / -1;';
+
+  if (!isOther) {
+    // Collapsed tile
+    const tile = document.createElement('div');
+    tile.className = 'beer-option';
+    tile.style.cssText = 'display:flex;align-items:center;gap:10px;text-align:left;';
+    tile.innerHTML = `<div style="display:flex;align-items:center;gap:10px;text-align:left;width:100%"><div style="flex-shrink:0"><svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 16L14 5l3 3L5 19H3v-3z" stroke="var(--teal)" stroke-width="1.6" fill="none" stroke-linejoin="round"/><path d="M12 7l3 3" stroke="var(--teal)" stroke-width="1.6" stroke-linecap="round"/></svg></div><div><div class="beer-option-name">Other</div><div class="beer-option-cal">Enter name &amp; calories</div></div></div>`;
+    tile.onclick = () => {
+      if (!state.otherBeers) state.otherBeers = {};
+      if (!state.otherBeers[containerId]) state.otherBeers[containerId] = { name: '', cal: '' };
+      onChange(otherId);
+      renderBeerPickerTracked(containerId, otherId, onChange);
+    };
+    wrap.appendChild(tile);
+  } else {
+    // Expanded inline form
+    const name = (otherBeer && otherBeer.name) || '';
+    const cal  = (otherBeer && otherBeer.cal)  || '';
+
+    const form = document.createElement('div');
+    form.style.cssText = 'border:1.5px solid var(--amber);border-radius:10px;padding:14px 16px;background:rgba(212,130,26,0.08);';
+    form.innerHTML = `
+      <div style="font-family:'Courier Prime',monospace;font-size:11px;letter-spacing:2px;color:var(--amber-light);text-transform:uppercase;margin-bottom:12px;">✏️ Custom Beer</div>
+      <div style="display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;">
+        <input id="${containerId}_otherName" class="input-field" style="margin-top:0" placeholder="Beer name (e.g. Shiner Bock)" value="${name}">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <input id="${containerId}_otherCal" class="input-field" style="margin-top:0;width:90px" type="number" min="1" max="999" placeholder="Cal" value="${cal}">
+          <span style="font-family:'Courier Prime',monospace;font-size:11px;color:var(--text-dim)">cal</span>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;">
+        <button class="btn-confirm" style="flex:1;padding:8px;font-size:12px" onclick="saveOtherBeer('${containerId}', '${otherId}')">Save</button>
+        <button class="btn-cancel" style="padding:8px 14px;font-size:12px" onclick="cancelOtherBeer('${containerId}', '${otherId}')">Cancel</button>
+      </div>
+    `;
+    wrap.appendChild(form);
+
+    // Show saved name/cal in tile if already filled
+    if (name && cal) {
+      // Register as a virtual beer so getBeer() can resolve it
+      registerOtherBeer(containerId, otherId, name, +cal);
+    }
+  }
+
+  c.appendChild(wrap);
+}
+
+function saveOtherBeer(containerId, otherId) {
+  const nameEl = document.getElementById(containerId + '_otherName');
+  const calEl  = document.getElementById(containerId + '_otherCal');
+  const name = nameEl ? nameEl.value.trim() : '';
+  const cal  = calEl  ? parseInt(calEl.value) : 0;
+  if (!name) { showToast('Enter a beer name'); return; }
+  if (!cal || cal < 1) { showToast('Enter calories per beer'); return; }
+  if (!state.otherBeers) state.otherBeers = {};
+  state.otherBeers[containerId] = { name, cal };
+  registerOtherBeer(containerId, otherId, name, cal);
+  save();
+  // Re-render so collapsed tile shows the saved name
+  const onChange = pickerCallbacks[containerId];
+  if (onChange) { onChange(otherId); renderBeerPickerTracked(containerId, otherId, onChange); }
+  showToast(`${name} saved — ${cal} cal 🍺`);
+}
+
+function cancelOtherBeer(containerId, otherId) {
+  // Deselect back to first beer
+  const cb = pickerCallbacks[containerId];
+  const fallback = DEFAULT_BEERS[0].id;
+  if (cb) { cb(fallback); renderBeerPickerTracked(containerId, fallback, cb); }
+}
+
+// Registry so getBeer() can resolve "other_*" ids
+const otherBeerRegistry = {};
+function registerOtherBeer(containerId, id, name, cal) {
+  otherBeerRegistry[id] = { id, name, cal, glass: null, style: 'Custom' };
+}
+
+// Store onChange callbacks so saveOtherBeer / cancelOtherBeer can re-render
+const pickerCallbacks = {};
+
+// =============================
+//  BEER HELPERS
+// =============================
+function getAllBeers() {
+  return [...DEFAULT_BEERS, ...state.customBeers];
+}
+
+function getBeer(id) {
+  if (id && id.startsWith('other_') && otherBeerRegistry[id]) return otherBeerRegistry[id];
+  return getAllBeers().find(b => b.id === id) || DEFAULT_BEERS[2];
+}
+
+// Wrapper that stores callback for save/cancel
+function renderBeerPickerTracked(containerId, selected, onChange) {
+  pickerCallbacks[containerId] = onChange;
+  renderBeerPicker(containerId, selected, onChange);
+}
+
+// =============================
+//  PREVIEW MODE
+// =============================
+function loadPreviewMode() {
+  const now = new Date();
+  const day = now.getDay();
+
+  // Helper: date offset from today
+  const daysAgo = (n) => {
+    const d = new Date(now);
+    d.setDate(now.getDate() - n);
+    d.setHours(7, 30, 0, 0);
+    return d.toISOString();
+  };
+
+  const mockLedger = [
+    // This week — activities
+    { id: 'prev_1', date: daysAgo(day),     type: 'earn', beers: 2.1, cal: 322, note: 'Morning Run',       activityType: 'Run' },
+    { id: 'prev_2', date: daysAgo(day - 1), type: 'earn', beers: 3.4, cal: 520, note: 'Evening Ride',      activityType: 'Ride' },
+    { id: 'prev_3', date: daysAgo(day - 2), type: 'earn', beers: 1.8, cal: 275, note: 'Lunch Walk',        activityType: 'Walk' },
+    { id: 'prev_4', date: daysAgo(day - 3), type: 'earn', beers: 2.6, cal: 398, note: 'Track Workout',     activityType: 'Run' },
+    // Drinks this week
+    { id: 'drnk_1', date: daysAgo(day - 1), type: 'drink', beers: 2.0, cal: 306, note: '2x Lager',        beerId: 'lager' },
+    { id: 'drnk_2', date: daysAgo(day - 3), type: 'drink', beers: 1.0, cal: 153, note: '1x Lager',        beerId: 'lager' },
+    // Older activities
+    { id: 'prev_5', date: daysAgo(8),  type: 'earn', beers: 4.1, cal: 628, note: 'Long Run',               activityType: 'Run' },
+    { id: 'prev_6', date: daysAgo(9),  type: 'earn', beers: 2.9, cal: 444, note: 'Bike Commute',           activityType: 'Ride' },
+    { id: 'prev_7', date: daysAgo(10), type: 'earn', beers: 1.5, cal: 230, note: 'Yoga',                   activityType: 'Yoga' },
+    { id: 'prev_8', date: daysAgo(12), type: 'earn', beers: 3.2, cal: 490, note: 'Saturday Ride',          activityType: 'Ride' },
+    { id: 'drnk_3', date: daysAgo(9),  type: 'drink', beers: 3.0, cal: 585, note: '3x IPA',               beerId: 'ipa' },
+    { id: 'prev_9', date: daysAgo(14), type: 'earn', beers: 2.0, cal: 306, note: 'Easy Run',               activityType: 'Run' },
+    { id: 'prev_10',date: daysAgo(15), type: 'earn', beers: 1.2, cal: 184, note: 'Walk',                   activityType: 'Walk' },
+  ];
+
+  state.accessToken = 'PREVIEW_MODE';
+  state.athlete = { firstname: 'Brock', lastname: 'Preview' };
+  state.selectedBeer = 'lager';
+  state.ledger = mockLedger;
+  state.processedIds = mockLedger.filter(e => e.activityType).map(e => e.id);
+  state.customBeers = [];
+  save();
+  showDashboard();
+  showToast('👀 Preview Mode — no real data');
+}
+
+// =============================
+//  SETUP
+// =============================
+function showSetup() {
+  document.getElementById('setupScreen').classList.add('active');
+  document.getElementById('dashboard').style.display = 'none';
+  renderBeerPickerTracked('setupBeerPicker', state.selectedBeer, (id) => { state.selectedBeer = id; });
+}
+
+function startSetup() {
+  const id = document.getElementById('clientIdInput').value.trim();
+  if (!id) { showToast('Enter your Strava Client ID first'); return; }
+  state.clientId = id;
+  save();
+  connectStrava();
+}
+
+function connectStrava() {
+  if (!state.clientId) { showToast('Enter your Client ID in setup first'); return; }
+  const redirect = encodeURIComponent(window.location.origin + window.location.pathname);
+  const scope = 'activity:read_all';
+  window.location.href = `https://www.strava.com/oauth/authorize?client_id=${state.clientId}&redirect_uri=${redirect}&response_type=code&scope=${scope}`;
+}
+
+// =============================
+//  OAUTH
+// =============================
+async function exchangeToken(code) {
+  showToast('Connecting to Strava…');
+  // Token exchange requires backend — we use Strava's token endpoint directly
+  // User must also provide client_secret. We'll prompt after redirect.
+  const secret = prompt('Almost there! Enter your Strava Client Secret (stored locally only):');
+  if (!secret) { showSetup(); return; }
+
+  try {
+    const r = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ client_id: state.clientId, client_secret: secret, code, grant_type: 'authorization_code' })
+    });
+    const data = await r.json();
+    if (data.access_token) {
+      state.accessToken = data.access_token;
+      state.athlete = data.athlete;
+      save();
+      showDashboard();
+      fetchActivities();
+    } else {
+      alert('Auth failed: ' + JSON.stringify(data));
+      showSetup();
+    }
+  } catch (e) {
+    alert('Error: ' + e.message);
+    showSetup();
+  }
+}
+
+// =============================
+//  DASHBOARD
+// =============================
+function showDashboard() {
+  document.getElementById('setupScreen').classList.remove('active');
+  document.getElementById('dashboard').style.display = 'block';
+  document.getElementById('stravaBtn').style.display = 'none';
+  const banner = document.getElementById('previewBanner');
+  if (state.accessToken === 'PREVIEW_MODE') {
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
+  if (state.athlete) {
+    const first = state.athlete.firstname || '';
+    if (first) {
+      document.getElementById('logoText').innerHTML = first + "'s <span style=\"color:var(--teal)\">Beer</span> <span style=\"color:var(--gold)\">Bank</span>";
+      document.title = first + "'s Beer Bank 🍺";
+    }
+    document.getElementById('athleteName').textContent = '👋 ' + first;
+    document.getElementById('athleteName').style.display = 'block';
+  }
+  renderAll();
+}
+
+function clearPreview() {
+  localStorage.removeItem('beerbank_v3');
+  location.reload();
+}
+
+function renderAll() {
+  renderBalance();
+  renderWeek();
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); renderWeek(); });
+  renderCustomBeers();
+  renderFeed();
+  renderStats();
+}
+
+// =============================
+//  BALANCE
+// =============================
+function getBalance() {
+  return state.ledger.reduce((sum, e) => e.type === 'earn' ? sum + e.beers : sum - e.beers, 0);
+}
+
+function renderBalance() {
+  const bal = getBalance();
+  document.getElementById('balanceDisplay').textContent = bal.toFixed(1);
+  document.getElementById('balanceDisplay').style.color = bal < 0 ? 'var(--red)' : 'var(--amber-light)';
+  const beer = getBeer(state.selectedBeer);
+  document.getElementById('currentBeerBadge').innerHTML = `<span class="drink-type-badge">${beer.emoji} ${beer.name} · ${beer.cal} cal/beer selected</span>`;
+}
+
+// =============================
+//  WEEK
+// =============================
+function getWeekBounds() {
+  const now = new Date();
+  const day = now.getDay(); // 0=Sun
+  const sun = new Date(now); sun.setHours(0,0,0,0); sun.setDate(now.getDate() - day);
+  const sat = new Date(sun); sat.setDate(sun.getDate() + 6); sat.setHours(23,59,59,999);
+  return { sun, sat };
+}
+
+function renderWeek() {
+  const { sun, sat } = getWeekBounds();
+  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const today = new Date().getDay();
+
+  // Accumulate per day
+  const earned = [0,0,0,0,0,0,0];
+  const drank  = [0,0,0,0,0,0,0];
+
+  state.ledger.forEach(e => {
+    const d = new Date(e.date);
+    if (d >= sun && d <= sat) {
+      const dow = d.getDay();
+      if (e.type === 'earn') earned[dow] += e.beers;
+      else drank[dow] += e.beers;
+    }
+  });
+
+  const nets = earned.map((e,i) => +(e - drank[i]).toFixed(1));
+  const maxAbs = Math.max(...nets.map(Math.abs), 0.1);
+
+  const grid = document.getElementById('weekGrid');
+  grid.innerHTML = '';
+  days.forEach((d, i) => {
+    const net = nets[i];
+    const barH = Math.round((Math.abs(net) / maxAbs) * 70);
+    const isToday = i === today;
+    const col = document.createElement('div');
+    col.className = 'day-col';
+    col.innerHTML = `
+      <div class="day-label">${d}</div>
+      <div class="day-bar-wrap">
+        <div class="day-bar ${isToday ? 'today' : ''} ${net < 0 ? 'negative' : ''}" style="height:${Math.max(barH,2)}px"></div>
+      </div>
+      <div class="day-val">${net === 0 ? '—' : (net > 0 ? '+' : '') + net}</div>
+    `;
+    grid.appendChild(col);
+  });
+
+  // range label
+  const fmt = d => d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  document.getElementById('weekRange').textContent = `${fmt(sun)} – ${fmt(sat)}`;
+
+  const totalEarned = earned.reduce((a,b)=>a+b,0);
+  const totalDrank  = drank.reduce((a,b)=>a+b,0);
+  const weekNet     = totalEarned - totalDrank;
+  document.getElementById('weekEarned').textContent = totalEarned.toFixed(1);
+  document.getElementById('weekDrank').textContent  = totalDrank.toFixed(1);
+  document.getElementById('weekNet').textContent    = (weekNet >= 0 ? '+' : '') + weekNet.toFixed(1);
+  document.getElementById('weekNet').style.color = weekNet >= 0 ? 'var(--amber-light)' : 'var(--red)';
+}
+
+// =============================
+//  ACTIVITY FEED
+// =============================
+const ACTIVITY_ICONS = { Run:'🏃',Ride:'🚴',Swim:'🏊',Walk:'🚶',Hike:'🥾',WeightTraining:'🏋️',Yoga:'🧘',Golf:'⛳',Soccer:'⚽',Tennis:'🎾',Basketball:'🏀',Other:'🏅' };
+
+function calToBeers(cal, beerId) {
+  const b = getBeer(beerId || state.selectedBeer);
+  return cal / b.cal;
+}
+
+async function fetchActivities() {
+  if (!state.accessToken) return;
+  const btn = document.getElementById('refreshBtn');
+  if (btn) btn.textContent = '↻ Syncing…';
+
+  try {
+    const r = await fetch('https://www.strava.com/api/v3/athlete/activities?per_page=30', {
+      headers: { 'Authorization': 'Bearer ' + state.accessToken }
+    });
+    if (r.status === 401) { state.accessToken = ''; save(); showSetup(); return; }
+    const acts = await r.json();
+    state.activities = acts;
+
+    // Auto-add new activities to ledger
+    let newCount = 0;
+    acts.forEach(a => {
+      if (state.processedIds.includes(a.id)) return;
+      const cal = a.calories || estimateCal(a);
+      if (cal > 0) {
+        const beers = calToBeers(cal, state.selectedBeer);
+        state.ledger.push({
+          id: 'act_' + a.id,
+          date: a.start_date,
+          type: 'earn',
+          beers: +beers.toFixed(2),
+          cal,
+          note: a.name,
+          activityType: a.type,
+          stravaId: a.id
+        });
+        state.processedIds.push(a.id);
+        newCount++;
+      }
+    });
+    save();
+    renderAll();
+    if (newCount > 0) showToast(`+${newCount} new activities synced 🍺`);
+    else showToast('All caught up!');
+  } catch (e) {
+    showToast('Sync error: ' + e.message);
+  }
+  if (btn) btn.textContent = '↻ Sync Strava';
+}
+
+function refreshActivities() {
+  if (state.accessToken === 'PREVIEW_MODE') { showToast('Preview mode — no real Strava data'); return; }
+  fetchActivities();
+}
+
+function estimateCal(a) {
+  // MET-based fallback
+  const METs = { Run:10, Ride:7, Swim:8, Walk:4, Hike:6, WeightTraining:5, Yoga:3, Golf:4.5 };
+  const met = METs[a.type] || 5;
+  const hrs = (a.moving_time || 0) / 3600;
+  return Math.round(met * 80 * hrs); // assume 80kg
+}
+
+function renderFeed() {
+  const feed = document.getElementById('activityFeed');
+  const items = [...state.ledger].reverse().slice(0, 15);
+  if (!items.length) { feed.innerHTML = '<div class="empty-state">No activity yet. Sync Strava or log manually.</div>'; return; }
+
+  feed.innerHTML = '';
+  items.forEach(e => {
+    const beer = getBeer(e.beerId || state.selectedBeer);
+    const isEarn = e.type === 'earn';
+    const icon = isEarn ? (ACTIVITY_ICONS[e.activityType] || '💪') : '🍺';
+    const d = new Date(e.date);
+    const dStr = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+    const div = document.createElement('div');
+    div.className = 'activity-item';
+    div.innerHTML = `
+      <div class="activity-icon">${icon}</div>
+      <div class="activity-info">
+        <div class="activity-name">${e.note || (isEarn ? 'Workout' : 'Beers logged')}</div>
+        <div class="activity-meta">${dStr}${e.cal ? ' · ' + Math.round(e.cal) + ' cal' : ''}</div>
+      </div>
+      <div>
+        <div class="activity-beers ${isEarn ? '' : 'negative'}">${isEarn ? '+' : '-'}${e.beers.toFixed(1)}</div>
+        <div class="activity-beers-label">beers</div>
+      </div>
+    `;
+    feed.appendChild(div);
+  });
+}
+
+// =============================
+//  STATS
+// =============================
+function renderStats() {
+  const earned = state.ledger.filter(e=>e.type==='earn').reduce((s,e)=>s+e.beers,0);
+  const drank  = state.ledger.filter(e=>e.type==='drink').reduce((s,e)=>s+e.beers,0);
+  const totalCal = state.ledger.filter(e=>e.type==='earn').reduce((s,e)=>s+(e.cal||0),0);
+  const acts = state.ledger.filter(e=>e.type==='earn').length;
+
+  document.getElementById('statEarned').textContent = earned.toFixed(1) + ' 🍺';
+  document.getElementById('statDrank').textContent  = drank.toFixed(1);
+  document.getElementById('statActivities').textContent = acts;
+  document.getElementById('statCalories').textContent = Math.round(totalCal).toLocaleString();
+
+  // Best week
+  const weekTotals = {};
+  state.ledger.filter(e=>e.type==='earn').forEach(e => {
+    const d = new Date(e.date);
+    const day = d.getDay();
+    const sun = new Date(d); sun.setDate(d.getDate()-day); sun.setHours(0,0,0,0);
+    const key = sun.toISOString().slice(0,10);
+    weekTotals[key] = (weekTotals[key]||0) + e.beers;
+  });
+  const best = Math.max(0, ...Object.values(weekTotals));
+  document.getElementById('statBestWeek').textContent = best.toFixed(1) + ' 🍺';
+}
+
+// =============================
+//  MODAL
+// =============================
+let modalMode = 'drink';
+let modalQty = 1;
+let modalBeerId = null;
+
+function openModal(mode) {
+  modalMode = mode;
+  modalQty = 1;
+  modalBeerId = state.selectedBeer;
+  document.getElementById('qtyDisplay').textContent = '1';
+  document.getElementById('modalTitle').textContent = mode === 'drink' ? '🍺 Log Beers Drank' : '💪 Log Manual Activity';
+  document.getElementById('modalSub').textContent = mode === 'drink' ? 'DEDUCT FROM YOUR BANK' : 'ADD TO YOUR BANK';
+  document.getElementById('confirmBtn').textContent = mode === 'drink' ? 'Drink 🍺' : 'Add Beers';
+  renderBeerPickerTracked('modalBeerPicker', modalBeerId, (id) => { modalBeerId = id; updateCalSummary(); });
+  if (mode === 'earn') {
+    // For manual earn, qty = beers directly
+    document.querySelector('.form-group .form-label').textContent = 'Beer Style (to calc calories)';
+  }
+  updateCalSummary();
+  document.getElementById('logOverlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('logOverlay').classList.remove('open');
+}
+
+function adjustQty(delta) {
+  modalQty = Math.max(0.5, modalQty + delta * 0.5);
+  document.getElementById('qtyDisplay').textContent = modalQty % 1 === 0 ? modalQty : modalQty.toFixed(1);
+  updateCalSummary();
+}
+
+function updateCalSummary() {
+  const beer = getBeer(modalBeerId || state.selectedBeer);
+  const totalCal = Math.round(beer.cal * modalQty);
+  document.getElementById('calSummary').textContent = `${beer.name} · ${beer.cal} cal/beer · ${totalCal} cal total`;
+}
+
+function confirmLog() {
+  const beer = getBeer(modalBeerId || state.selectedBeer);
+  const entry = {
+    id: 'manual_' + Date.now(),
+    date: new Date().toISOString(),
+    type: modalMode === 'drink' ? 'drink' : 'earn',
+    beers: modalQty,
+    cal: Math.round(beer.cal * modalQty),
+    note: modalMode === 'drink' ? `${modalQty}x ${beer.name}` : `Manual: ${modalQty}x ${beer.name}`,
+    beerId: modalBeerId,
+  };
+  state.ledger.push(entry);
+  save();
+  closeModal();
+  renderAll();
+  const msg = modalMode === 'drink' ? `−${modalQty} beers logged 😎` : `+${modalQty} beers earned 💪`;
+  showToast(msg);
+}
+
+// =============================
+//  CUSTOM BEERS
+// =============================
+function renderCustomBeers() {
+  const c = document.getElementById('customBeerList');
+  if (!c) return;
+  c.innerHTML = '';
+  state.customBeers.forEach((b, i) => {
+    const row = document.createElement('div');
+    row.className = 'custom-beer-row';
+    row.innerHTML = `
+      <input class="input-field" value="${b.name}" placeholder="Name" onchange="updateCustomBeer(${i},'name',this.value)">
+      <input class="input-field" type="number" value="${b.cal}" style="max-width:90px" placeholder="Cal" onchange="updateCustomBeer(${i},'cal',+this.value)">
+      <button class="btn-remove" onclick="removeCustomBeer(${i})">×</button>
+    `;
+    c.appendChild(row);
+  });
+}
+
+function addCustomBeer() {
+  state.customBeers.push({ id: 'custom_' + Date.now(), name: 'My Beer', cal: 150, emoji: '🍺', style: 'Custom' });
+  save();
+  renderCustomBeers();
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); });
+}
+
+function updateCustomBeer(i, key, val) {
+  state.customBeers[i][key] = val;
+  save();
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); });
+}
+
+function removeCustomBeer(i) {
+  state.customBeers.splice(i, 1);
+  if (!getAllBeers().find(b=>b.id===state.selectedBeer)) state.selectedBeer = DEFAULT_BEERS[0].id;
+  save();
+  renderCustomBeers();
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); });
+}
+
+// =============================
+//  TOAST
+// =============================
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Close modal on overlay click
+document.getElementById('logOverlay').addEventListener('click', e => { if (e.target === e.currentTarget) closeModal(); });
+</script>
+</body>
+</html>
