@@ -888,6 +888,9 @@
     <div style="font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);text-align:center;line-height:1.8;letter-spacing:1px;text-transform:uppercase">
       Your data is stored only in your browser's localStorage.<br>No server. No tracking. Just 🍺.
     </div>
+    <div style="margin-top:32px;text-align:center">
+      <button onclick="hardReset()" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);opacity:0.4;cursor:pointer;letter-spacing:1px;text-transform:uppercase">Reset all data</button>
+    </div>
   </div>
 </div>
 
@@ -967,10 +970,12 @@
       </div>
     </div>
 
+    <div style="text-align:center;padding:24px 0 8px">
+      <button onclick="hardReset()" style="background:none;border:none;font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);opacity:0.3;cursor:pointer;letter-spacing:1px;text-transform:uppercase">Reset all data</button>
+    </div>
+
   </div>
 </div>
-
-<!-- LOG MODAL -->
 <div class="overlay" id="logOverlay">
   <div class="modal">
     <div class="modal-title" id="modalTitle">Log Beers Drank</div>
@@ -1282,6 +1287,13 @@ function loadPreviewMode() {
   showToast('👀 Preview Mode — no real data');
 }
 
+function hardReset() {
+  if (confirm('This will delete all your Beer Bank data and start fresh. Are you sure?')) {
+    localStorage.clear();
+    location.reload();
+  }
+}
+
 // =============================
 //  SETUP
 // =============================
@@ -1510,13 +1522,14 @@ async function fetchActivities() {
       }
 
       if (cal > 0) {
-        const beers = calToBeers(cal, state.selectedBeer);
+        const adjustedCal = Math.round(cal * 0.65);
+        const beers = calToBeers(adjustedCal, state.selectedBeer);
         state.ledger.push({
           id: 'act_' + a.id,
           date: a.start_date,
           type: 'earn',
           beers: +beers.toFixed(2),
-          cal,
+          cal: adjustedCal,
           note: a.name,
           activityType: a.type,
           stravaId: a.id
