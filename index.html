@@ -1522,7 +1522,7 @@ async function fetchActivities() {
       }
 
       if (cal > 0) {
-        const adjustedCal = Math.round(cal * 0.65);
+        const adjustedCal = Math.round(cal * 0.5);
         const beers = calToBeers(adjustedCal, state.selectedBeer);
         state.ledger.push({
           id: 'act_' + a.id,
