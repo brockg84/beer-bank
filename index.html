@@ -844,6 +844,10 @@
   </div>
   <div class="header-right">
     <div id="athleteName" class="athlete-name" style="display:none"></div>
+    <button class="strava-btn" id="stravaBtn" onclick="connectStrava()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>
+      Connect Strava
+    </button>
   </div>
 </div>
 
@@ -858,19 +862,26 @@
       <ol class="setup-steps">
         <li class="setup-step">
           <div class="setup-step-content">
-            <div class="setup-step-title">Pick your default beer style</div>
-            <div class="setup-step-desc">Used to calculate how many beers you earn per workout. You can change this anytime.</div>
-            <div id="setupBeerPicker" class="beer-select-wrap" style="margin-top:12px"></div>
+            <div class="setup-step-title">Create a free Strava API app</div>
+            <div class="setup-step-desc">Go to <a href="https://www.strava.com/settings/api" target="_blank" style="color:var(--teal)">strava.com/settings/api</a>. Set "Authorization Callback Domain" to <code style="color:var(--gold)">localhost</code> (or your GitHub Pages domain). Copy your Client ID and Client Secret.</div>
           </div>
         </li>
         <li class="setup-step">
           <div class="setup-step-content">
-            <div class="setup-step-title">Add the Apple Shortcut</div>
-            <div class="setup-step-desc">After setup, you'll get step-by-step instructions to build a one-tap shortcut that pulls your last workout from Apple Health and sends it straight to Beer Bank.</div>
+            <div class="setup-step-title">Enter your Client ID below</div>
+            <div class="setup-step-desc">Your secret never leaves this page — everything runs locally in your browser.</div>
+            <input class="input-field" id="clientIdInput" type="text" placeholder="e.g. 12345" />
+          </div>
+        </li>
+        <li class="setup-step">
+          <div class="setup-step-content">
+            <div class="setup-step-title">Pick your default beer style</div>
+            <div class="setup-step-desc">You can always change this later or add a custom style.</div>
+            <div id="setupBeerPicker" class="beer-select-wrap" style="margin-top:12px"></div>
           </div>
         </li>
       </ol>
-      <button class="btn-big" onclick="startAppleHealth()" style="width:100%">Get Started →</button>
+      <button class="btn-big" onclick="startSetup()" style="width:100%">Connect Strava →</button>
       <button class="btn-preview" onclick="loadPreviewMode()" style="width:100%;margin-top:12px">👀 Preview Dashboard</button>
     </div>
 
@@ -882,6 +893,9 @@
 
 <!-- DASHBOARD -->
 <div id="dashboard" style="display:none">
+  <div id="previewBanner" style="display:none;background:var(--teal);color:var(--navy);text-align:center;padding:8px;font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:13px;letter-spacing:2px;text-transform:uppercase">
+    👀 PREVIEW MODE &nbsp;·&nbsp; <span style="opacity:0.7;font-weight:400">Mock data only</span> &nbsp;·&nbsp; <button onclick="clearPreview()" style="background:none;border:1px solid var(--navy);color:var(--navy);padding:2px 10px;border-radius:3px;font-family:inherit;font-weight:700;font-size:12px;cursor:pointer;letter-spacing:1px">EXIT</button>
+  </div>
   <div class="main">
 
     <!-- BALANCE HERO -->
@@ -893,6 +907,7 @@
       <div class="balance-actions">
         <button class="btn-drink" onclick="openModal('drink')">🍺 Log Beers Drank</button>
         <button class="btn-earn" onclick="openModal('earn')">💪 Log Manual Activity</button>
+        <button class="btn-drink" onclick="refreshActivities()" id="refreshBtn">↻ Sync Strava</button>
       </div>
     </div>
 
@@ -986,25 +1001,7 @@
   </div>
 </div>
 
-<!-- SHORTCUT INSTRUCTIONS MODAL -->
-<div class="overlay" id="shortcutOverlay">
-  <div class="modal" style="max-height:90vh;overflow-y:auto">
-    <div class="modal-title">📱 Apple Shortcut Setup</div>
-    <div class="modal-sub">ONE-TIME · TAKES 3 MINUTES</div>
-    <p style="font-size:13px;color:var(--off-white);opacity:0.8;line-height:1.7;margin-bottom:20px">Open the <strong>Shortcuts app</strong> on your iPhone and tap <strong>+</strong> to create a new shortcut. Then add these actions in order:</p>
-
-    <div id="shortcutSteps"></div>
-
-    <div style="background:rgba(75,191,191,0.08);border:1px solid var(--teal);border-radius:6px;padding:14px;margin-top:16px;font-family:'DM Mono',monospace;font-size:11px;color:var(--teal);line-height:1.8;letter-spacing:0.5px;word-break:break-all" id="shortcutUrl"></div>
-
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="document.getElementById('shortcutOverlay').classList.remove('open')">Close</button>
-      <button class="btn-confirm" onclick="enterApp()">Open Beer Bank →</button>
-    </div>
-  </div>
-</div>
-
-
+<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -1045,48 +1042,8 @@ load();
 
 // Run after all functions are defined
 document.addEventListener('DOMContentLoaded', function() {
+  // Check for OAuth callback
   const params = new URLSearchParams(window.location.search);
-
-  // ── Apple Health Shortcut import ──────────────────────────────
-  // URL format: ?health=1&cal=450&type=Running&name=Morning+Run
-  if (params.get('health')) {
-    const cal      = parseInt(params.get('cal') || '0');
-    const type     = params.get('type') || 'Workout';
-    const name     = params.get('name') || type;
-    window.history.replaceState({}, '', window.location.pathname);
-    load();
-    if (cal > 0) {
-      const beer = getBeer(state.selectedBeer);
-      const beers = +(cal / beer.cal).toFixed(2);
-      const entry = {
-        id: 'health_' + Date.now(),
-        date: new Date().toISOString(),
-        type: 'earn',
-        beers,
-        cal,
-        note: name,
-        activityType: type,
-        source: 'apple_health',
-      };
-      state.ledger.push(entry);
-      save();
-    }
-    if (state.accessToken) {
-      showDashboard();
-      if (cal > 0) {
-        const beer = getBeer(state.selectedBeer);
-        const beers = +(cal / beer.cal).toFixed(2);
-        setTimeout(() => showToast(`+${beers} beers earned 🍺`), 400);
-      } else {
-        showToast('No calories found in workout');
-      }
-    } else {
-      showSetup();
-    }
-    return;
-  }
-
-  // ── Strava OAuth callback ─────────────────────────────────────
   if (params.get('code')) {
     const code = params.get('code');
     window.history.replaceState({}, '', window.location.pathname);
@@ -1326,47 +1283,8 @@ function loadPreviewMode() {
 }
 
 // =============================
-//  APPLE HEALTH SETUP
+//  SETUP
 // =============================
-function startAppleHealth() {
-  save();
-  const base = window.location.origin + window.location.pathname;
-  const url = `${base}?health=1&cal=CALORIES&type=WORKOUT_TYPE&name=WORKOUT_NAME`;
-
-  const steps = [
-    { n: '1', title: 'Find Workouts', desc: 'Search for action: <strong>Find Health Samples</strong> → set Type to <strong>Workouts</strong> → Sort by <strong>Start Date (newest first)</strong> → Limit to <strong>1</strong>' },
-    { n: '2', title: 'Get Calories', desc: 'Add action: <strong>Get Details of Health Sample</strong> → choose <strong>Active Energy Burned</strong>' },
-    { n: '3', title: 'Get Workout Type', desc: 'Add another <strong>Get Details of Health Sample</strong> → choose <strong>Workout Type</strong>' },
-    { n: '4', title: 'Get Workout Name', desc: 'Add another <strong>Get Details of Health Sample</strong> → choose <strong>Workout Name</strong> (or use Workout Type if unavailable)' },
-    { n: '5', title: 'Open Beer Bank', desc: 'Add action: <strong>Open URLs</strong> → paste the URL below, then replace <code>CALORIES</code> with the Active Energy variable, <code>WORKOUT_TYPE</code> with the Type variable, and <code>WORKOUT_NAME</code> with the Name variable' },
-    { n: '6', title: 'Name & add to Home Screen', desc: 'Tap the shortcut name at the top → rename to <strong>"Log Workout 🍺"</strong> → tap the share icon → <strong>Add to Home Screen</strong>' },
-  ];
-
-  const stepsHtml = steps.map(s => `
-    <div style="display:flex;gap:12px;margin-bottom:16px">
-      <div style="width:22px;height:22px;background:var(--gold);color:var(--navy);border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:'Barlow Condensed',sans-serif;font-weight:900;font-size:13px;flex-shrink:0;margin-top:2px">${s.n}</div>
-      <div>
-        <div style="font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:0.5px;color:var(--white);margin-bottom:3px">${s.title}</div>
-        <div style="font-size:12px;color:var(--off-white);opacity:0.7;line-height:1.6">${s.desc}</div>
-      </div>
-    </div>
-  `).join('');
-
-  document.getElementById('shortcutSteps').innerHTML = stepsHtml;
-  document.getElementById('shortcutUrl').innerHTML = `<div style="margin-bottom:6px;color:var(--muted)">YOUR URL — copy this:</div>${base}?health=1&cal=<em>[Active Energy]</em>&type=<em>[Workout Type]</em>&name=<em>[Workout Name]</em>`;
-  document.getElementById('shortcutOverlay').classList.add('open');
-}
-
-function enterApp() {
-  document.getElementById('shortcutOverlay').classList.remove('open');
-  // Mark as set up with Apple Health (no token needed)
-  state.accessToken = 'APPLE_HEALTH';
-  if (!state.athlete) state.athlete = { firstname: '' };
-  save();
-  showDashboard();
-}
-
-
 function showSetup() {
   document.getElementById('setupScreen').classList.add('active');
   document.getElementById('dashboard').style.display = 'none';
@@ -1427,13 +1345,22 @@ async function exchangeToken(code) {
 function showDashboard() {
   document.getElementById('setupScreen').classList.remove('active');
   document.getElementById('dashboard').style.display = 'block';
-  const first = state.athlete && state.athlete.firstname ? state.athlete.firstname : '';
-  if (first) {
-    document.getElementById('logoText').innerHTML = first + "'s <span style=\"color:var(--teal)\">Beer</span> <span style=\"color:var(--gold)\">Bank</span>";
-    document.title = first + "'s Beer Bank 🍺";
+  document.getElementById('stravaBtn').style.display = 'none';
+  const banner = document.getElementById('previewBanner');
+  if (state.accessToken === 'PREVIEW_MODE') {
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
   }
-  document.getElementById('athleteName').textContent = first ? '👋 ' + first : '';
-  document.getElementById('athleteName').style.display = first ? 'block' : 'none';
+  if (state.athlete) {
+    const first = state.athlete.firstname || '';
+    if (first) {
+      document.getElementById('logoText').innerHTML = first + "'s <span style=\"color:var(--teal)\">Beer</span> <span style=\"color:var(--gold)\">Bank</span>";
+      document.title = first + "'s Beer Bank 🍺";
+    }
+    document.getElementById('athleteName').textContent = '👋 ' + first;
+    document.getElementById('athleteName').style.display = 'block';
+  }
   renderAll();
 }
 
@@ -1584,8 +1511,7 @@ async function fetchActivities() {
 }
 
 function refreshActivities() {
-  if (state.accessToken === 'PREVIEW_MODE') { showToast('Preview mode — no real data'); return; }
-  if (state.accessToken === 'APPLE_HEALTH') { showToast('Use your home screen shortcut to import workouts'); return; }
+  if (state.accessToken === 'PREVIEW_MODE') { showToast('Preview mode — no real Strava data'); return; }
   fetchActivities();
 }
 
