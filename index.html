@@ -1381,11 +1381,19 @@ function renderAll() {
 // =============================
 //  BALANCE
 // =============================
+// Live beer count — earn entries recalculate from calories using current beer style
+function liveBeers(e) {
+  if (e.type === 'earn' && e.cal) {
+    return e.cal / getBeer(state.selectedBeer).cal;
+  }
+  return e.beers;
+}
+
 function getBalance() {
   const { sun, sat } = getWeekBounds();
   return state.ledger
     .filter(e => { const d = new Date(e.date); return d >= sun && d <= sat; })
-    .reduce((sum, e) => e.type === 'earn' ? sum + e.beers : sum - e.beers, 0);
+    .reduce((sum, e) => e.type === 'earn' ? sum + liveBeers(e) : sum - e.beers, 0);
 }
 
 function renderBalance() {
@@ -1420,7 +1428,7 @@ function renderWeek() {
     const d = new Date(e.date);
     if (d >= sun && d <= sat) {
       const dow = d.getDay();
-      if (e.type === 'earn') earned[dow] += e.beers;
+      if (e.type === 'earn') earned[dow] += liveBeers(e);
       else drank[dow] += e.beers;
     }
   });
@@ -1547,7 +1555,7 @@ function renderFeed() {
         <div class="activity-meta">${dStr}${e.cal ? ' · ' + Math.round(e.cal) + ' cal' : ''}</div>
       </div>
       <div>
-        <div class="activity-beers ${isEarn ? '' : 'negative'}">${isEarn ? '+' : '-'}${e.beers.toFixed(1)}</div>
+        <div class="activity-beers ${isEarn ? '' : 'negative'}">${isEarn ? '+' : '-'}${liveBeers(e).toFixed(1)}</div>
         <div class="activity-beers-label">beers</div>
       </div>
     `;
@@ -1561,7 +1569,7 @@ function renderFeed() {
 function renderStats() {
   const yearStart = new Date('2026-01-01T00:00:00');
   const annual = state.ledger.filter(e => new Date(e.date) >= yearStart);
-  const earned = annual.filter(e=>e.type==='earn').reduce((s,e)=>s+e.beers,0);
+  const earned = annual.filter(e=>e.type==='earn').reduce((s,e)=>s+liveBeers(e),0);
   const drank  = annual.filter(e=>e.type==='drink').reduce((s,e)=>s+e.beers,0);
   const totalCal = annual.filter(e=>e.type==='earn').reduce((s,e)=>s+(e.cal||0),0);
   const acts = annual.filter(e=>e.type==='earn').length;
@@ -1578,7 +1586,7 @@ function renderStats() {
     const day = d.getDay();
     const sun = new Date(d); sun.setDate(d.getDate()-day); sun.setHours(0,0,0,0);
     const key = sun.toISOString().slice(0,10);
-    weekTotals[key] = (weekTotals[key]||0) + e.beers;
+    weekTotals[key] = (weekTotals[key]||0) + liveBeers(e);
   });
   const best = Math.max(0, ...Object.values(weekTotals));
   document.getElementById('statBestWeek').textContent = best.toFixed(1) + ' 🍺';
