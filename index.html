@@ -1490,11 +1490,25 @@ async function fetchActivities() {
     const acts = await r.json();
     state.activities = acts;
 
-    // Auto-add new activities to ledger
+    // Only process new activities
+    const newActs = acts.filter(a => !state.processedIds.includes(a.id));
     let newCount = 0;
-    acts.forEach(a => {
-      if (state.processedIds.includes(a.id)) return;
-      const cal = a.calories || estimateCal(a);
+
+    for (const a of newActs) {
+      // Fetch full activity detail for accurate calories
+      let cal = a.calories || 0;
+      if (!cal) {
+        try {
+          const detail = await fetch(`https://www.strava.com/api/v3/activities/${a.id}`, {
+            headers: { 'Authorization': 'Bearer ' + state.accessToken }
+          });
+          const full = await detail.json();
+          cal = full.calories || estimateCal(a);
+        } catch (e) {
+          cal = estimateCal(a);
+        }
+      }
+
       if (cal > 0) {
         const beers = calToBeers(cal, state.selectedBeer);
         state.ledger.push({
@@ -1510,7 +1524,8 @@ async function fetchActivities() {
         state.processedIds.push(a.id);
         newCount++;
       }
-    });
+    }
+
     save();
     renderAll();
     if (newCount > 0) showToast(`+${newCount} new activities synced 🍺`);
