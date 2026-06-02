@@ -900,7 +900,7 @@
 
     <!-- BALANCE HERO -->
     <div class="balance-hero">
-      <div class="balance-label">🍺 Current Beer Balance</div>
+      <div class="balance-label">🍺 This Week's Beer Balance</div>
       <div class="balance-number" id="balanceDisplay">0.0</div>
       <div class="balance-unit">beers in the bank</div>
       <div style="margin-top:12px" id="currentBeerBadge"></div>
@@ -1382,15 +1382,18 @@ function renderAll() {
 //  BALANCE
 // =============================
 function getBalance() {
-  return state.ledger.reduce((sum, e) => e.type === 'earn' ? sum + e.beers : sum - e.beers, 0);
+  const { sun, sat } = getWeekBounds();
+  return state.ledger
+    .filter(e => { const d = new Date(e.date); return d >= sun && d <= sat; })
+    .reduce((sum, e) => e.type === 'earn' ? sum + e.beers : sum - e.beers, 0);
 }
 
 function renderBalance() {
   const bal = getBalance();
   document.getElementById('balanceDisplay').textContent = bal.toFixed(1);
-  document.getElementById('balanceDisplay').style.color = bal < 0 ? 'var(--red)' : 'var(--amber-light)';
+  document.getElementById('balanceDisplay').style.color = bal < 0 ? 'var(--red)' : 'var(--gold)';
   const beer = getBeer(state.selectedBeer);
-  document.getElementById('currentBeerBadge').innerHTML = `<span class="drink-type-badge">${beer.emoji} ${beer.name} · ${beer.cal} cal/beer selected</span>`;
+  document.getElementById('currentBeerBadge').innerHTML = `<span class="drink-type-badge">${beer.name} · ${beer.cal} cal/beer</span>`;
 }
 
 // =============================
