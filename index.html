@@ -956,7 +956,7 @@
       </div>
 
       <div class="card">
-        <div class="card-title">📊 All-Time Stats</div>
+        <div class="card-title">📊 2026 Stats</div>
         <div id="statsPanel">
           <div class="stat-row"><span class="stat-key">Total Earned</span><span class="stat-val" id="statEarned">0.0 🍺</span></div>
           <div class="stat-row"><span class="stat-key">Total Drank</span><span class="stat-val" id="statDrank">0.0</span></div>
@@ -1372,7 +1372,7 @@ function clearPreview() {
 function renderAll() {
   renderBalance();
   renderWeek();
-  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); renderWeek(); });
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderAll(); });
   renderCustomBeers();
   renderFeed();
   renderStats();
@@ -1456,7 +1456,7 @@ function renderWeek() {
   document.getElementById('weekEarned').textContent = totalEarned.toFixed(1);
   document.getElementById('weekDrank').textContent  = totalDrank.toFixed(1);
   document.getElementById('weekNet').textContent    = (weekNet >= 0 ? '+' : '') + weekNet.toFixed(1);
-  document.getElementById('weekNet').style.color = weekNet >= 0 ? 'var(--amber-light)' : 'var(--red)';
+  document.getElementById('weekNet').style.color = weekNet >= 0 ? 'var(--gold)' : 'var(--red)';
 }
 
 // =============================
@@ -1559,10 +1559,12 @@ function renderFeed() {
 //  STATS
 // =============================
 function renderStats() {
-  const earned = state.ledger.filter(e=>e.type==='earn').reduce((s,e)=>s+e.beers,0);
-  const drank  = state.ledger.filter(e=>e.type==='drink').reduce((s,e)=>s+e.beers,0);
-  const totalCal = state.ledger.filter(e=>e.type==='earn').reduce((s,e)=>s+(e.cal||0),0);
-  const acts = state.ledger.filter(e=>e.type==='earn').length;
+  const yearStart = new Date('2026-01-01T00:00:00');
+  const annual = state.ledger.filter(e => new Date(e.date) >= yearStart);
+  const earned = annual.filter(e=>e.type==='earn').reduce((s,e)=>s+e.beers,0);
+  const drank  = annual.filter(e=>e.type==='drink').reduce((s,e)=>s+e.beers,0);
+  const totalCal = annual.filter(e=>e.type==='earn').reduce((s,e)=>s+(e.cal||0),0);
+  const acts = annual.filter(e=>e.type==='earn').length;
 
   document.getElementById('statEarned').textContent = earned.toFixed(1) + ' 🍺';
   document.getElementById('statDrank').textContent  = drank.toFixed(1);
@@ -1571,7 +1573,7 @@ function renderStats() {
 
   // Best week
   const weekTotals = {};
-  state.ledger.filter(e=>e.type==='earn').forEach(e => {
+  annual.filter(e=>e.type==='earn').forEach(e => {
     const d = new Date(e.date);
     const day = d.getDay();
     const sun = new Date(d); sun.setDate(d.getDate()-day); sun.setHours(0,0,0,0);
@@ -1664,13 +1666,13 @@ function addCustomBeer() {
   state.customBeers.push({ id: 'custom_' + Date.now(), name: 'My Beer', cal: 150, emoji: '🍺', style: 'Custom' });
   save();
   renderCustomBeers();
-  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); });
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderAll(); });
 }
 
 function updateCustomBeer(i, key, val) {
   state.customBeers[i][key] = val;
   save();
-  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); });
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderAll(); });
 }
 
 function removeCustomBeer(i) {
@@ -1678,7 +1680,7 @@ function removeCustomBeer(i) {
   if (!getAllBeers().find(b=>b.id===state.selectedBeer)) state.selectedBeer = DEFAULT_BEERS[0].id;
   save();
   renderCustomBeers();
-  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderBalance(); });
+  renderBeerPickerTracked('beerPickerDash', state.selectedBeer, (id) => { state.selectedBeer = id; save(); renderAll(); });
 }
 
 // =============================
